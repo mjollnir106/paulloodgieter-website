@@ -1,0 +1,23 @@
+version: 0.2
+
+phases:
+  install:
+    commands:
+      - echo Entered the install phase...
+  pre_build:
+    commands:
+      - echo Entered the pre_build phase...
+      - INPUT_ARTIFACT=`aws s3 ls ${INPUT_BUCKET_NAME}/${PIPELINE_NAME}/source-out --recursive | sort | tail -n 1 | awk '{print $4}'`
+      - aws configure set s3.signature_version s3v4
+      - aws s3 cp s3://${INPUT_BUCKET_NAME}/$INPUT_ARTIFACT ./input.zip
+      - unzip input.zip -d ./input-src
+      - cd input-src
+  build:
+    commands:
+      - echo Entered the build phase...
+      - aws s3 sync ./ "s3://${BUCKET_NAME}" --delete --region eu-west-1 --only-show-errors
+      - aws configure set preview.cloudfront true
+      - aws cloudfront create-invalidation --distribution-id ${CLOUD_FRONT_DISTRIBUTION_ID} --paths /index.html
+  post_build:
+    commands:
+      - echo Entered the post_build phase...
